@@ -50,16 +50,20 @@ TV_SEASON_REGEX = re.compile(
     re.IGNORECASE,
 )
 
-
+RES_FALLBACK = re.compile(r"(\d{3,4})p", re.IGNORECASE)
 RES_FALLBACK = re.compile(r"(\d{3,4})p", re.IGNORECASE)
 YEAR_FALLBACK = re.compile(r"(?:19|20)\d{2}")
 
 VIDEO_EXTS = (".mkv", ".mp4", ".avi", ".m2ts", ".ts", ".mov", ".wmv")
 
-def _contains_any_token_ci(text: str, tokens: list[str]) -> str | None:
-    t = text.upper()
+def _segments(text: str) -> list[str]:
+    # Split by common release separators; keep only non-empty segments
+    return [s for s in re.split(r"[.\-\s_]+", text.upper()) if s]
+
+def _contains_any_segment(text: str, tokens: list[str]) -> str | None:
+    segs = set(_segments(text))
     for tok in tokens:
-        if tok in t:
+        if tok.upper() in segs:
             return tok
     return None
 
@@ -90,7 +94,7 @@ def analyze_title(category: str, title: str, min_res_p: int, enable_porn_block: 
     checks: list[CheckResult] = []
 
     if enable_porn_block:
-        porn_hit = _contains_any_token_ci(title, PORN_TOKENS)
+        porn_hit = _contains_any_segment(title, PORN_TOKENS)
         checks.append(CheckResult(
             ok=(porn_hit is None),
             code="porn_block",
@@ -106,7 +110,7 @@ def analyze_title(category: str, title: str, min_res_p: int, enable_porn_block: 
         message="No spaces or parentheses" if not _has_spaces_or_parens(title) else "Contains spaces/parentheses (not scene-dot style)"
     ))
 
-    banned_hit = _contains_any_token_ci(title, BANNED_QUALITY_TOKENS)
+    banned_hit = _contains_any_segment(title, BANNED_QUALITY_TOKENS)
     checks.append(CheckResult(
         ok=(banned_hit is None),
         code="banned_quality",
@@ -193,11 +197,23 @@ def analyze_title(category: str, title: str, min_res_p: int, enable_porn_block: 
     verdict = "pass" if all(c.ok for c in checks) else "fail"
     return {"verdict": verdict, "checks": [c.__dict__ for c in checks], "reason_key": "naming" if verdict == "fail" else None}
 
-def analyze_files(file_paths: list[str]) -> dict[str, Any]:
+def analyze_files(file_entries) -> dict[str, Any]:
+    # file_entries: list[str] (legacy) or list[{"path": str, "size": int|None}]
     checks: list[CheckResult] = []
-    total = len(file_paths)
 
-    video_files = [p for p in file_paths if p.lower().endswith(VIDEO_EXTS)]
+    # Normalize
+    normalized: list[dict[str, Any]] = []
+    if isinstance(file_entries, list):
+        for e in file_entries:
+            if isinstance(e, str):
+                normalized.append({"path": e, "size": None})
+            elif isinstance(e, dict):
+                normalized.append({"path": str(e.get("path", "")), "size": e.get("size")})
+            else:
+                normalized.append({"path": str(e), "size": None})
+
+    total = len(normalized)
+    video_files = [x for x in normalized if str(x.get("path", "")).lower().endswith(VIDEO_EXTS)]
     checks.append(CheckResult(
         ok=(len(video_files) > 0),
         code="has_video",
@@ -205,6 +221,58 @@ def analyze_files(file_paths: list[str]) -> dict[str, Any]:
         meta={"video_count": len(video_files), "total": total}
     ))
 
-    # Warn-style checks could be added later (e.g. sample files, subtitles-only, etc.)
-    verdict = "pass" if all(c.ok for c in checks) else "warn"
+    # Suspicious / unwanted file types
+    suspicious_exts = (".exe", ".bat", ".cmd", ".scr", ".lnk", ".url", ".js", ".vbs", ".ps1", ".apk")
+    suspicious = [x["path"] for x in normalized if str(x.get("path","")).lower().endswith(suspicious_exts)]
+    checks.append(CheckResult(
+        ok=(len(suspicious) == 0),
+        code="suspicious_files",
+        message="No suspicious file types detected" if not suspicious else f"Suspicious file types present: {len(suspicious)}",
+        meta={"examples": suspicious[:10]} if suspicious else None
+    ))
+
+    # Sample files (informational)
+    sample_hits = [x["path"] for x in normalized if re.search(r"(^|[\\\\/])sample([\\\\/]|$)", str(x.get("path","")), flags=re.IGNORECASE)]
+    checks.append(CheckResult(
+        ok=(len(sample_hits) == 0),
+        code="samples",
+        message="No sample folder/files detected" if not sample_hits else f"Sample folder/files detected: {len(sample_hits)}",
+        meta={"examples": sample_hits[:10]} if sample_hits else None
+    ))
+
+    # Very large file count
+    too_many = total >= 300
+    checks.append(CheckResult(
+        ok=not too_many,
+        code="file_count",
+        message=f"File count looks normal ({total})" if not too_many else f"Very large file count ({total}) — possible pack/collection or messy torrent",
+        meta={"total": total}
+    ))
+
+    # Size heuristic (if sizes present)
+    sized_videos = [x for x in video_files if isinstance(x.get("size"), int)]
+    if sized_videos:
+        largest = max(sized_videos, key=lambda x: x["size"])
+        largest_mb = largest["size"] / (1024 * 1024)
+        tiny = largest_mb < 200
+        checks.append(CheckResult(
+            ok=not tiny,
+            code="video_size",
+            message=f"Largest video file size OK ({largest_mb:.1f} MB)" if not tiny else f"Largest video file is very small ({largest_mb:.1f} MB) — suspicious",
+            meta={"largest_path": largest["path"], "largest_mb": round(largest_mb, 1)}
+        ))
+    else:
+        checks.append(CheckResult(
+            ok=True,
+            code="video_size",
+            message="Video size heuristic skipped (torrent did not provide sizes)",
+        ))
+
+    # Verdict logic
+    if not any(c.ok for c in checks if c.code == "has_video"):
+        verdict = "fail"
+    else:
+        warn = any((not c.ok and c.code in ("suspicious_files", "file_count", "video_size")) for c in checks) or any((not c.ok and c.code == "samples") for c in checks)
+        verdict = "warn" if warn else "pass"
+
     return {"verdict": verdict, "checks": [c.__dict__ for c in checks]}

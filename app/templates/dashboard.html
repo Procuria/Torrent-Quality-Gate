@@ -1,32 +1,45 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="flex items-center justify-between mb-4">
-  <div>
-    <h1 class="text-lg font-semibold">Analyses</h1>
-    <p class="text-sm text-slate-300">Latest checks (metadata only).</p>
-  </div>
-  <a href="/analyses/new" class="px-4 py-2 rounded-xl bg-qgCard border border-qgLine hover:border-qgTeal">
-    + New analysis
-  </a>
+  <h1 class="text-lg font-semibold">Recent analyses</h1>
+  <a class="text-sm px-4 py-2 rounded-xl bg-qgCard border border-qgLine hover:border-qgBlue" href="/analyses/new">New analysis</a>
 </div>
 
 <div class="bg-qgCard border border-qgLine rounded-2xl overflow-hidden">
   <div class="grid grid-cols-12 text-xs text-slate-300 px-4 py-3 border-b border-qgLine">
     <div class="col-span-1">ID</div>
+    <div class="col-span-1">Verdict</div>
     <div class="col-span-2">Category</div>
-    <div class="col-span-6">Title</div>
-    <div class="col-span-2">Info hash</div>
-    <div class="col-span-1 text-right">Link</div>
+    <div class="col-span-2">By</div>
+    <div class="col-span-4">Title</div>
+    <div class="col-span-1">Info hash</div>
+    <div class="col-span-1 text-right">Open</div>
   </div>
 
-  {% for a in analyses %}
-    <div class="grid grid-cols-12 px-4 py-3 border-b border-qgLine/70 hover:bg-white/5">
+  {% for item in items %}
+    {% set a = item.a %}
+    {% set v = item.verdict %}
+    <div class="grid grid-cols-12 px-4 py-3 border-b border-qgLine hover:bg-white/5">
       <div class="col-span-1 text-sm text-slate-200">{{ a.id }}</div>
+
+      <div class="col-span-1">
+        {% if v %}
+          {% set b = "bg-emerald-500/15 text-emerald-200" if v=="pass" else ("bg-amber-500/15 text-amber-200" if v=="warn" else "bg-red-500/15 text-red-200") %}
+          <span class="text-xs px-2 py-1 rounded-lg {{ b }}">{{ v|upper }}</span>
+        {% else %}
+          <span class="text-xs text-slate-400">-</span>
+        {% endif %}
+      </div>
+
       <div class="col-span-2 text-sm text-slate-200">{{ a.category }}</div>
-      <div class="col-span-6 text-sm text-slate-100 truncate">{{ a.input_title or a.torrent_info_name or "-" }}</div>
-      <div class="col-span-2 text-xs text-slate-300 truncate">{{ a.info_hash or "-" }}</div>
+      <div class="col-span-2 text-sm text-slate-200 truncate">{{ item.by or "-" }}</div>
+
+      <div class="col-span-4 text-sm text-slate-100 truncate">{{ a.input_title or a.torrent_info_name or "-" }}</div>
+
+      <div class="col-span-1 text-xs text-slate-300 truncate">{{ a.info_hash or "-" }}</div>
+
       <div class="col-span-1 text-right">
-        <a class="text-sm text-qgTeal hover:underline" href="/analyses/{{ a.id }}">open</a>
+        <a class="text-sm text-qgTeal hover:underline" href="/analyses/{{ a.id }}">View</a>
       </div>
     </div>
   {% endfor %}

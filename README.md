@@ -18,6 +18,7 @@ It **does not** download content and only inspects metadata and filenames.
   - optional porn keyword block
 - GuessIt parsing of title + torrent "info name" and file names
 - JSON API for listing and retrieving analyses
+- Verdict states: `pass`, `warn`, `fail` (reasons only shown on `fail`)
 
 ## Quick start (local)
 ```bash
