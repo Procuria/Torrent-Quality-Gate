@@ -2,7 +2,7 @@
 {% block content %}
 <div class="max-w-3xl">
   <h1 class="text-lg font-semibold mb-1">New analysis</h1>
-  <p class="text-sm text-slate-300 mb-4">Paste a title/description and/or upload the <code class="text-slate-200">.torrent</code> file.</p>
+  <p class="text-sm text-slate-300 mb-4">Paste a title/description and/or upload the <code class="text-slate-200">.torrent</code> file. If you provide a title, it will be used as the <span class="text-slate-100">effective title</span>; otherwise the torrent's <span class="text-slate-100">info name</span> is used.</p>
 
   <form method="post" action="/analyses/new" enctype="multipart/form-data" class="bg-qgCard border border-qgLine rounded-2xl p-6 space-y-5">
     <div class="grid grid-cols-2 gap-4">
@@ -15,7 +15,17 @@
       </div>
       <div>
         <label class="text-xs text-slate-300">Torrent file (.torrent)</label>
-        <input type="file" name="torrent_file" class="mt-1 w-full text-sm" />
+<input type="file" name="torrent_file" class="mt-1 w-full text-sm" />
+<div class="mt-2 text-xs text-slate-300 bg-qgBg border border-qgLine rounded-xl p-3">
+  <div class="font-medium text-slate-200 mb-1">Why upload the .torrent?</div>
+  <ul class="list-disc pl-5 space-y-1">
+    <li><span class="text-slate-100">Info name</span> (often the real root name)</li>
+    <li><span class="text-slate-100">File list</span> (paths + sometimes sizes)</li>
+    <li><span class="text-slate-100">Info hash</span> (unique identifier)</li>
+    <li><span class="text-slate-100">Announce / trackers</span> (if present)</li>
+  </ul>
+  <div class="mt-2 text-slate-400">We do not download content — this is metadata only.</div>
+</div>
       </div>
     </div>
 

@@ -14,7 +14,6 @@ from .torrent_meta import read_torrent_bytes
 from .checks import analyze_title, analyze_files
 from .guessit_wrap import guess
 
-
 app = FastAPI(title="Quality Gateway")
 templates = Jinja2Templates(directory="app/templates")
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
@@ -52,6 +51,7 @@ def _startup():
 def _analysis_to_dict(a: Analysis) -> dict:
     return {
         "id": a.id,
+        "created_by_username": (a.created_by_user.username if getattr(a, "created_by_user", None) else None),
         "created_at": a.created_at.isoformat() + "Z",
         "created_by": a.created_by,
         "category": a.category,
@@ -70,17 +70,34 @@ def _make_results(category: str, title: str, torrent_meta, description: str | No
     gi_title = guess(title)
     gi_info = guess(torrent_meta.info_name or "") if torrent_meta and torrent_meta.info_name else {}
     gi_files = []
-    for p in (torrent_meta.files[:10] if torrent_meta else []):  # cap for UI
-        gi_files.append({"path": p, "guessit": guess(p.split("/")[-1])})
+    for f in (torrent_meta.files[:10] if torrent_meta else []):  # cap for UI
+        # f can be a legacy string path OR a dict {"path": "...", "size": ...}
+        if isinstance(f, dict):
+            p = str(f.get("path", ""))
+            size = f.get("size")
+        else:
+            p = str(f)
+            size = None
+        basename = p.split("/")[-1].split("\\")[-1]
+        gi_files.append({"path": p, "size": size, "guessit": guess(basename)})
 
-    # decide reason string key
+
+    
+    # Decide overall verdict and reason:
+    # - If title checks fail: FAIL with reason (porn or naming)
+    # - Else if file checks warn: WARN (no reason)
+    # - Else: PASS (no reason)
     reason = None
-    if title_res.get("reason_key") == "porn":
-        reason = settings.reason_porn
-    elif title_res.get("verdict") == "fail":
-        reason = settings.reason_naming
-
-    verdict = "pass" if (title_res["verdict"] == "pass" and files_res["verdict"] in ("pass","warn")) else "fail"
+    if title_res.get("verdict") == "fail":
+        if title_res.get("reason_key") == "porn":
+            reason = settings.reason_porn
+        else:
+            reason = settings.reason_naming
+        verdict = "fail"
+    elif files_res.get("verdict") == "warn":
+        verdict = "warn"
+    else:
+        verdict = "pass"
 
     return {
         "verdict": verdict,
@@ -97,6 +114,7 @@ def _make_results(category: str, title: str, torrent_meta, description: str | No
             "sample_files": gi_files,
         }
     }
+
 
 # ---------- Web UI ----------
 @app.get("/login", response_class=HTMLResponse)
@@ -120,18 +138,20 @@ def logout():
     clear_auth_cookie(resp)
     return resp
 
-
-
 @app.get("/", response_class=HTMLResponse)
-def dashboard(request: Request, db: Session = Depends(get_db)):
-    try:
-        user = get_current_user(request, db)
-    except Exception:
-        return RedirectResponse(url="/login", status_code=302)
-
+def dashboard(request: Request, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     analyses = db.query(Analysis).order_by(Analysis.id.desc()).limit(50).all()
-    return templates.TemplateResponse("dashboard.html", {"request": request, "user": user, "analyses": analyses})
-
+    # Precompute verdict for quick UI badges
+    items = []
+    for a in analyses:
+        try:
+            r = json.loads(a.results) if a.results else {}
+            v = r.get("verdict")
+        except Exception:
+            v = None
+        by = a.created_by_user.username if getattr(a, "created_by_user", None) else None
+        items.append({"a": a, "verdict": v, "by": by})
+    return templates.TemplateResponse("dashboard.html", {"request": request, "user": user, "items": items})
 
 @app.get("/analyses/new", response_class=HTMLResponse)
 def new_analysis_page(request: Request, user: User = Depends(get_current_user)):
@@ -157,8 +177,6 @@ async def new_analysis(
         meta = read_torrent_bytes(raw)
 
     effective_title = (title or (meta.info_name if meta else "") or "").strip()
-    import re
-    effective_title = re.sub(r"\.(mkv|mp4|avi|m2ts|ts|mov|wmv)$", "", effective_title, flags=re.IGNORECASE)
     if not effective_title:
         raise HTTPException(400, "Provide a title or upload a torrent with an info name")
 
@@ -230,8 +248,6 @@ async def api_create_analysis(
         meta = read_torrent_bytes(raw)
 
     effective_title = (title or (meta.info_name if meta else "") or "").strip()
-    import re
-    effective_title = re.sub(r"\.(mkv|mp4|avi|m2ts|ts|mov|wmv)$", "", effective_title, flags=re.IGNORECASE)
     if not effective_title:
         raise HTTPException(400, "Provide a title or upload a torrent with an info name")
 
