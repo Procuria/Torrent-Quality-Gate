@@ -92,10 +92,12 @@
             {% if results.reason %}Reason: <span class="text-slate-100">{{ results.reason }}</span>{% else %}No automatic reason string (pass/warn).{% endif %}
           </p>
         </div>
-        <button id="copyNoteBtn" class="text-sm px-4 py-2 rounded-xl bg-qgBg border border-qgLine hover:border-qgTeal">
-          Copy moderation note
+        <button id="copyNoteBtn"
+        type="button"
+        class="text-sm px-4 py-2 rounded-xl bg-qgBg border border-qgLine hover:border-qgTeal">
+        Copy moderation note
         </button>
-      </div>
+        </div>
 
       <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
         <div class="p-3 rounded-xl bg-qgBg border border-qgLine">
@@ -169,15 +171,39 @@ File checks:
     const btn = document.getElementById("copyNoteBtn");
     const ta = document.getElementById("moderationNote");
     if (!btn || !ta) return;
-    btn.addEventListener("click", async () => {
+
+    async function copyText(text) {
+      // Primary: modern clipboard API (works on localhost/https)
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        return;
+      }
+      // Fallback: create temp textarea + execCommand
+      const tmp = document.createElement("textarea");
+      tmp.value = text;
+      tmp.setAttribute("readonly", "");
+      tmp.style.position = "absolute";
+      tmp.style.left = "-9999px";
+      document.body.appendChild(tmp);
+      tmp.select();
+      document.execCommand("copy");
+      document.body.removeChild(tmp);
+    }
+
+    btn.addEventListener("click", async (e) => {
+      e.preventDefault();
+      const text = (ta.value || "").trim();
+      if (!text) return;
+
       try {
-        await navigator.clipboard.writeText(ta.value.trim());
+        await copyText(text);
         btn.textContent = "Copied!";
         setTimeout(() => (btn.textContent = "Copy moderation note"), 1200);
-      } catch (e) {
+      } catch (err) {
         btn.textContent = "Copy failed";
         setTimeout(() => (btn.textContent = "Copy moderation note"), 1200);
       }
     });
   })();
 </script>
+

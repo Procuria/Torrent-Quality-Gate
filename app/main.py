@@ -64,6 +64,39 @@ def _analysis_to_dict(a: Analysis) -> dict:
         "results": json.loads(a.results),
     }
 
+def _pick_reason_from_checks(title_res: dict) -> tuple[str | None, str | None]:
+    """
+    Returns (reason_string, reason_code) for moderation.
+    reason_string is a short staff-facing string; reason_code helps debugging.
+    """
+    checks = title_res.get("checks") or []
+    failed = [c for c in checks if not c.get("ok")]
+
+    if not failed:
+        return (None, None)
+
+    # Prefer porn_block if it failed
+    porn = next((c for c in failed if c.get("code") == "porn_block"), None)
+    if porn:
+        return ("No Porn here", "porn_block")
+
+    first = failed[0]
+    code = first.get("code")
+
+    mapping = {
+        "dot_style": "Naming wrong - use dots, no spaces/parentheses",
+        "group_suffix": "Naming wrong - missing -GROUP suffix",
+        "pattern_movie": "Naming wrong - Movie pattern required (Title.Year.Res.Source-Group)",
+        "pattern_tv": "Naming wrong - TV pattern required (Show.SxxEyy...-Group or Show.Sxx...-Group)",
+        "pattern_tv_ep": "Naming wrong - TV episode pattern required (Show.SxxEyy...-Group)",
+        "pattern_tv_season": "Naming wrong - TV season pattern required (Show.Sxx...-Group)",
+        "banned_quality": "Banned quality - no TS/SCREEN/CAM etc",
+        "min_resolution": "Resolution too low (min 760p)",
+    }
+
+    return (mapping.get(code, "Naming wrong - check your naming"), code)
+
+
 def _make_results(category: str, title: str, torrent_meta, description: str | None):
     title_res = analyze_title(category, title, settings.min_res_p, settings.enable_porn_block)
     files_res = analyze_files(torrent_meta.files if torrent_meta else [])
@@ -88,20 +121,23 @@ def _make_results(category: str, title: str, torrent_meta, description: str | No
     # - Else if file checks warn: WARN (no reason)
     # - Else: PASS (no reason)
     reason = None
+    reason_code = None
+
     if title_res.get("verdict") == "fail":
-        if title_res.get("reason_key") == "porn":
-            reason = settings.reason_porn
-        else:
-            reason = settings.reason_naming
+        reason, reason_code = _pick_reason_from_checks(title_res)
+        verdict = "fail"
+    elif files_res.get("verdict") == "fail":
         verdict = "fail"
     elif files_res.get("verdict") == "warn":
         verdict = "warn"
     else:
         verdict = "pass"
 
+
     return {
         "verdict": verdict,
         "reason": reason,
+        "reason_code": reason_code,
         "policy": {
             "min_res_p": settings.min_res_p,
             "enable_porn_block": settings.enable_porn_block,
@@ -169,6 +205,17 @@ async def new_analysis(
 ):
     if category not in ("Movie", "TV"):
         raise HTTPException(400, "Category must be Movie or TV")
+    
+    if not torrent_file:
+        return templates.TemplateResponse(
+            "new_analysis.html",
+            {
+                "request": request,
+                "user": user,
+                "error": "Please upload a .torrent file to run an analysis.",
+            },
+            status_code=400,
+        )
 
     raw = None
     meta = None
@@ -177,6 +224,15 @@ async def new_analysis(
         meta = read_torrent_bytes(raw)
 
     effective_title = (title or (meta.info_name if meta else "") or "").strip()
+    import re
+
+    # If title was not pasted, we typically use the torrent's info name.
+    # That can include a container extension (e.g. "...-GROUP.mkv") which breaks pattern/group checks.
+    if meta and (not title):
+        effective_title = re.sub(r"\.(mkv|mp4|avi|m2ts|ts|mov|wmv)$", "", effective_title, flags=re.IGNORECASE)
+
+    # Also strip accidental ".torrent" if someone pastes/uses a filename
+    effective_title = re.sub(r"\.torrent$", "", effective_title, flags=re.IGNORECASE)
     if not effective_title:
         raise HTTPException(400, "Provide a title or upload a torrent with an info name")
 
@@ -240,6 +296,9 @@ async def api_create_analysis(
 ):
     if category not in ("Movie", "TV"):
         raise HTTPException(400, "Category must be Movie or TV")
+    
+    if not torrent_file:
+        raise HTTPException(400, "torrent_file is required")
 
     raw = None
     meta = None
