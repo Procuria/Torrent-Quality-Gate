@@ -5,7 +5,6 @@ against your moderation rules (naming policy, banned tokens, minimum resolution 
 It **does not** download content and only inspects metadata and filenames.
 
 ## Features
-- Dark UI (teal/blue accents)
 - Multi-user login (admin can create users in the UI)
 - Upload `.torrent` + optional pasted title/description
 - Runs checks:
