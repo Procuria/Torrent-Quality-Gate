@@ -177,6 +177,15 @@ async def new_analysis(
         meta = read_torrent_bytes(raw)
 
     effective_title = (title or (meta.info_name if meta else "") or "").strip()
+    import re
+
+    # If title was not pasted, we typically use the torrent's info name.
+    # That can include a container extension (e.g. "...-GROUP.mkv") which breaks pattern/group checks.
+    if meta and (not title):
+        effective_title = re.sub(r"\.(mkv|mp4|avi|m2ts|ts|mov|wmv)$", "", effective_title, flags=re.IGNORECASE)
+
+    # Also strip accidental ".torrent" if someone pastes/uses a filename
+    effective_title = re.sub(r"\.torrent$", "", effective_title, flags=re.IGNORECASE)
     if not effective_title:
         raise HTTPException(400, "Provide a title or upload a torrent with an info name")
 
