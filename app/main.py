@@ -14,6 +14,7 @@ from .torrent_meta import read_torrent_bytes
 from .checks import analyze_title, analyze_files
 from .guessit_wrap import guess
 
+
 app = FastAPI(title="Quality Gateway")
 templates = Jinja2Templates(directory="app/templates")
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
@@ -119,10 +120,18 @@ def logout():
     clear_auth_cookie(resp)
     return resp
 
+
+
 @app.get("/", response_class=HTMLResponse)
-def dashboard(request: Request, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def dashboard(request: Request, db: Session = Depends(get_db)):
+    try:
+        user = get_current_user(request, db)
+    except Exception:
+        return RedirectResponse(url="/login", status_code=302)
+
     analyses = db.query(Analysis).order_by(Analysis.id.desc()).limit(50).all()
     return templates.TemplateResponse("dashboard.html", {"request": request, "user": user, "analyses": analyses})
+
 
 @app.get("/analyses/new", response_class=HTMLResponse)
 def new_analysis_page(request: Request, user: User = Depends(get_current_user)):
@@ -148,6 +157,8 @@ async def new_analysis(
         meta = read_torrent_bytes(raw)
 
     effective_title = (title or (meta.info_name if meta else "") or "").strip()
+    import re
+    effective_title = re.sub(r"\.(mkv|mp4|avi|m2ts|ts|mov|wmv)$", "", effective_title, flags=re.IGNORECASE)
     if not effective_title:
         raise HTTPException(400, "Provide a title or upload a torrent with an info name")
 
@@ -219,6 +230,8 @@ async def api_create_analysis(
         meta = read_torrent_bytes(raw)
 
     effective_title = (title or (meta.info_name if meta else "") or "").strip()
+    import re
+    effective_title = re.sub(r"\.(mkv|mp4|avi|m2ts|ts|mov|wmv)$", "", effective_title, flags=re.IGNORECASE)
     if not effective_title:
         raise HTTPException(400, "Provide a title or upload a torrent with an info name")
 

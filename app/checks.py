@@ -15,37 +15,41 @@ PORN_TOKENS = [
 ]
 
 MOVIE_REGEX = re.compile(
-    r"^(?!.*[()\s])"
-    r"(?=.+-[A-Za-z0-9]{2,}$)"
-    r"(?=.*\.(?:19|20)\d{2}\.)"
-    r"(?=.*\.(\d{3,4})p\.)"
-    r"(?:(?!\b(?:TS|SCREEN|TELESYNC|CAM|HDCAM|TC|TELECINE|SCREENER|DVDSCR|SCR)\b).)*$"
-    r"[A-Za-z0-9]+(?:\.[A-Za-z0-9]+)*\.(?:19|20)\d{2}\.(\d{3,4})p\.(?:[A-Z0-9]{2,6}\.)?"
-    r"(WEB-DL|WEBRip|WEB|BluRay|BDRip|REMUX|HDTV)\..+-(?:[A-Za-z0-9]{2,})$",
+    r"^(?!.*[()\s])"                                  # no spaces/parentheses
+    r"(?P<title>[A-Za-z0-9]+(?:\.[A-Za-z0-9]+)*)\."    # dot title
+    r"(?P<year>(?:19|20)\d{2})\."                      # .YEAR.
+    r"(?P<res>\d{3,4})p\."                             # .1080p.
+    r"(?:(?P<service>[A-Z0-9]{2,6})\.)?"               # optional NF/ATVP/AMZN...
+    r"(?P<source>WEB-DL|WEBRip|WEB|BluRay|BDRip|REMUX|HDTV)\."
+    r".+-"                                             # rest
+    r"(?P<group>[A-Za-z0-9]{2,})$",
     re.IGNORECASE,
 )
 
 TV_EP_REGEX = re.compile(
     r"^(?!.*[()\s])"
-    r"(?=.+-[A-Za-z0-9]{2,}$)"
-    r"(?=.*\.S\d{2}E\d{2}\.)"
-    r"(?=.*\.(\d{3,4})p\.)"
-    r"(?:(?!\b(?:TS|SCREEN|TELESYNC|CAM|HDCAM|TC|TELECINE|SCREENER|DVDSCR|SCR)\b).)*$"
-    r"[A-Za-z0-9]+(?:\.[A-Za-z0-9]+)*\.S\d{2}E\d{2}\.(\d{3,4})p\.(?:[A-Z0-9]{2,6}\.)?"
-    r"(WEB-DL|WEBRip|WEB|BluRay|BDRip|REMUX|HDTV)\..+-(?:[A-Za-z0-9]{2,})$",
+    r"(?P<show>[A-Za-z0-9]+(?:\.[A-Za-z0-9]+)*)\."
+    r"S(?P<season>\d{2})E(?P<episode>\d{2})\."
+    r"(?P<res>\d{3,4})p\."
+    r"(?:(?P<service>[A-Z0-9]{2,6})\.)?"
+    r"(?P<source>WEB-DL|WEBRip|WEB|BluRay|BDRip|REMUX|HDTV)\."
+    r".+-"
+    r"(?P<group>[A-Za-z0-9]{2,})$",
     re.IGNORECASE,
 )
 
 TV_SEASON_REGEX = re.compile(
     r"^(?!.*[()\s])"
-    r"(?=.+-[A-Za-z0-9]{2,}$)"
-    r"(?=.*\.S\d{2}\.)"
-    r"(?=.*\.(\d{3,4})p\.)"
-    r"(?:(?!\b(?:TS|SCREEN|TELESYNC|CAM|HDCAM|TC|TELECINE|SCREENER|DVDSCR|SCR)\b).)*$"
-    r"[A-Za-z0-9]+(?:\.[A-Za-z0-9]+)*\.S\d{2}\.(\d{3,4})p\.(?:[A-Z0-9]{2,6}\.)?"
-    r"(WEB-DL|WEBRip|WEB|BluRay|BDRip|REMUX|HDTV)\..+-(?:[A-Za-z0-9]{2,})$",
+    r"(?P<show>[A-Za-z0-9]+(?:\.[A-Za-z0-9]+)*)\."
+    r"S(?P<season>\d{2})\."
+    r"(?P<res>\d{3,4})p\."
+    r"(?:(?P<service>[A-Z0-9]{2,6})\.)?"
+    r"(?P<source>WEB-DL|WEBRip|WEB|BluRay|BDRip|REMUX|HDTV)\."
+    r".+-"
+    r"(?P<group>[A-Za-z0-9]{2,})$",
     re.IGNORECASE,
 )
+
 
 RES_FALLBACK = re.compile(r"(\d{3,4})p", re.IGNORECASE)
 YEAR_FALLBACK = re.compile(r"(?:19|20)\d{2}")
