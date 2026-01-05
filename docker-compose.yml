@@ -1,0 +1,15 @@
+services:
+  quality-gateway:
+    build: .
+    ports:
+      - "8088:8088"
+    environment:
+      - QG_SECRET_KEY=please-change-me
+      - QG_ADMIN_USER=admin
+      - QG_ADMIN_PASS=change-me-now
+      - QG_MIN_RES_P=760
+      - QG_ENABLE_PORN_BLOCK=true
+      - QG_DB_PATH=/data/qg.sqlite
+    volumes:
+      - ./data:/data
+    restart: unless-stopped

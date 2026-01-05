@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ title if title else "Quality Gateway" }}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            qgBg: "#0b1220",
+            qgCard: "#0f1a2d",
+            qgLine: "#1e2b44",
+            qgTeal: "#14b8a6",
+            qgBlue: "#3b82f6",
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body class="bg-qgBg text-slate-100 min-h-screen">
+  <div class="max-w-6xl mx-auto px-4 py-6">
+    <div class="flex items-center justify-between mb-6">
+      <a href="/" class="text-xl font-semibold tracking-tight">
+        <span class="text-qgTeal">Quality</span><span class="text-qgBlue">Gateway</span>
+      </a>
+      {% if user %}
+      <div class="flex items-center gap-3">
+        <span class="text-sm text-slate-300">Signed in as <span class="text-slate-100 font-medium">{{ user.username }}</span></span>
+        {% if user.is_admin %}
+          <a class="text-sm px-3 py-1 rounded-lg bg-qgCard border border-qgLine hover:border-qgTeal" href="/admin/users">Admin</a>
+        {% endif %}
+        <a class="text-sm px-3 py-1 rounded-lg bg-qgCard border border-qgLine hover:border-qgBlue" href="/logout">Logout</a>
+      </div>
+      {% endif %}
+    </div>
+
+    {% block content %}{% endblock %}
+  </div>
+  <script src="/static/app.js"></script>
+</body>
+</html>

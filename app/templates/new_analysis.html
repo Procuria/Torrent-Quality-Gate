@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-3xl">
+  <h1 class="text-lg font-semibold mb-1">New analysis</h1>
+  <p class="text-sm text-slate-300 mb-4">Paste a title/description and/or upload the <code class="text-slate-200">.torrent</code> file.</p>
+
+  <form method="post" action="/analyses/new" enctype="multipart/form-data" class="bg-qgCard border border-qgLine rounded-2xl p-6 space-y-5">
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="text-xs text-slate-300">Category</label>
+        <select name="category" class="mt-1 w-full rounded-xl bg-qgBg border border-qgLine px-3 py-2 focus:outline-none focus:border-qgTeal">
+          <option>Movie</option>
+          <option>TV</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-xs text-slate-300">Torrent file (.torrent)</label>
+        <input type="file" name="torrent_file" class="mt-1 w-full text-sm" />
+      </div>
+    </div>
+
+    <div>
+      <label class="text-xs text-slate-300">Title (optional if torrent has info name)</label>
+      <input name="title" class="mt-1 w-full rounded-xl bg-qgBg border border-qgLine px-3 py-2 focus:outline-none focus:border-qgBlue"
+             placeholder="Wake.Up.Dead.Man.A.Knives.Out.Mystery.2025.1080p.NF.WEB-DL...-GROUP" />
+    </div>
+
+    <div>
+      <label class="text-xs text-slate-300">Description (optional)</label>
+      <textarea name="description" rows="6" class="mt-1 w-full rounded-xl bg-qgBg border border-qgLine px-3 py-2 focus:outline-none focus:border-qgLine"
+                placeholder="Paste UNIT3D description if you want to keep it with the analysis..."></textarea>
+    </div>
+
+    <button class="w-full rounded-xl py-2 font-medium bg-gradient-to-r from-qgTeal to-qgBlue hover:opacity-90">
+      Run analysis
+    </button>
+  </form>
+</div>
+{% endblock %}

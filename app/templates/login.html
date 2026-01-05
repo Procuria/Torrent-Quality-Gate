@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-md mx-auto mt-10">
+  <div class="bg-qgCard border border-qgLine rounded-2xl p-6 shadow">
+    <h1 class="text-lg font-semibold mb-1">Sign in</h1>
+    <p class="text-sm text-slate-300 mb-4">Use a staff account to access the analyzer.</p>
+
+    {% if error %}
+      <div class="mb-4 p-3 rounded-xl bg-red-950/40 border border-red-700 text-sm">{{ error }}</div>
+    {% endif %}
+
+    <form method="post" action="/login" class="space-y-4">
+      <div>
+        <label class="text-xs text-slate-300">Username</label>
+        <input name="username" class="mt-1 w-full rounded-xl bg-qgBg border border-qgLine px-3 py-2 focus:outline-none focus:border-qgTeal" />
+      </div>
+      <div>
+        <label class="text-xs text-slate-300">Password</label>
+        <input type="password" name="password" class="mt-1 w-full rounded-xl bg-qgBg border border-qgLine px-3 py-2 focus:outline-none focus:border-qgBlue" />
+      </div>
+      <button class="w-full rounded-xl py-2 font-medium bg-gradient-to-r from-qgTeal to-qgBlue hover:opacity-90">
+        Sign in
+      </button>
+    </form>
+
+    <p class="mt-4 text-xs text-slate-400">
+      If this is the first run, set <code class="text-slate-200">QG_ADMIN_USER</code> and <code class="text-slate-200">QG_ADMIN_PASS</code>.
+    </p>
+  </div>
+</div>
+{% endblock %}

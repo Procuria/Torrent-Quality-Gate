@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="mb-4">
+  <div class="flex items-start justify-between gap-4">
+    <div>
+      <h1 class="text-lg font-semibold">Analysis #{{ a.id }}</h1>
+      <p class="text-sm text-slate-300">{{ a.category }} · {{ a.created_at }}</p>
+    </div>
+    {% set v = results.verdict %}
+    <div class="px-3 py-1 rounded-xl border {{ 'border-emerald-500 text-emerald-200' if v=='pass' else 'border-red-500 text-red-200' }}">
+      {{ v|upper }}
+    </div>
+  </div>
+
+  {% if results.reason %}
+    <div class="mt-3 p-3 rounded-xl bg-red-950/40 border border-red-700 text-sm">
+      <span class="font-medium">Reason:</span> {{ results.reason }}
+    </div>
+  {% endif %}
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+  <div class="lg:col-span-2 space-y-4">
+    <div class="bg-qgCard border border-qgLine rounded-2xl p-5">
+      <h2 class="font-semibold mb-2">Title checks</h2>
+      <div class="space-y-2">
+        {% for c in results.title_checks.checks %}
+          <div class="flex items-start justify-between gap-3 p-3 rounded-xl border border-qgLine/80">
+            <div>
+              <div class="text-sm font-medium">{{ c.code }}</div>
+              <div class="text-xs text-slate-300">{{ c.message }}</div>
+              {% if c.meta %}
+                <pre class="mt-2 text-xs text-slate-300 bg-qgBg rounded-xl p-2 overflow-auto">{{ c.meta | tojson }}</pre>
+              {% endif %}
+            </div>
+            <div class="text-xs px-2 py-1 rounded-lg {{ 'bg-emerald-500/15 text-emerald-200' if c.ok else 'bg-red-500/15 text-red-200' }}">
+              {{ 'OK' if c.ok else 'FAIL' }}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="bg-qgCard border border-qgLine rounded-2xl p-5">
+      <h2 class="font-semibold mb-2">Torrent file checks</h2>
+      <div class="space-y-2">
+        {% for c in results.file_checks.checks %}
+          <div class="flex items-start justify-between gap-3 p-3 rounded-xl border border-qgLine/80">
+            <div>
+              <div class="text-sm font-medium">{{ c.code }}</div>
+              <div class="text-xs text-slate-300">{{ c.message }}</div>
+              {% if c.meta %}
+                <pre class="mt-2 text-xs text-slate-300 bg-qgBg rounded-xl p-2 overflow-auto">{{ c.meta | tojson }}</pre>
+              {% endif %}
+            </div>
+            <div class="text-xs px-2 py-1 rounded-lg {{ 'bg-emerald-500/15 text-emerald-200' if c.ok else 'bg-amber-500/15 text-amber-200' }}">
+              {{ 'OK' if c.ok else 'WARN' }}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="bg-qgCard border border-qgLine rounded-2xl p-5">
+      <h2 class="font-semibold mb-2">Metadata</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+        <div class="p-3 rounded-xl bg-qgBg border border-qgLine">
+          <div class="text-xs text-slate-400">Effective title</div>
+          <div class="mt-1 break-words">{{ a.input_title or a.torrent_info_name }}</div>
+        </div>
+        <div class="p-3 rounded-xl bg-qgBg border border-qgLine">
+          <div class="text-xs text-slate-400">Info hash</div>
+          <div class="mt-1 break-words">{{ a.info_hash or "-" }}</div>
+        </div>
+      </div>
+
+      {% if a.files %}
+      <div class="mt-3 p-3 rounded-xl bg-qgBg border border-qgLine">
+        <div class="text-xs text-slate-400 mb-2">Files (first 50)</div>
+        <pre class="text-xs text-slate-300 overflow-auto max-h-64">{{ a.files }}</pre>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="space-y-4">
+    <div class="bg-qgCard border border-qgLine rounded-2xl p-5">
+      <h2 class="font-semibold mb-2">GuessIt</h2>
+      <div class="text-xs text-slate-400 mb-2">Title</div>
+      <pre class="text-xs bg-qgBg border border-qgLine rounded-xl p-3 overflow-auto">{{ results.guessit.title | tojson(indent=2) }}</pre>
+
+      {% if results.guessit.torrent_info_name %}
+        <div class="text-xs text-slate-400 mt-3 mb-2">Torrent info name</div>
+        <pre class="text-xs bg-qgBg border border-qgLine rounded-xl p-3 overflow-auto">{{ results.guessit.torrent_info_name | tojson(indent=2) }}</pre>
+      {% endif %}
+    </div>
+
+    <div class="bg-qgCard border border-qgLine rounded-2xl p-5">
+      <h2 class="font-semibold mb-2">API</h2>
+      <p class="text-sm text-slate-300">Fetch JSON:</p>
+      <code class="text-xs block mt-2 p-3 rounded-xl bg-qgBg border border-qgLine">GET /api/analyses/{{ a.id }}</code>
+    </div>
+  </div>
+</div>
+{% endblock %}
