@@ -175,9 +175,15 @@ def logout():
     return resp
 
 @app.get("/", response_class=HTMLResponse)
-def dashboard(request: Request, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def dashboard(request: Request, db: Session = Depends(get_db)):
+    # IMPORTANT: don't use Depends(get_current_user) here
+    try:
+        user = get_current_user(request, db)
+    except Exception:
+        return RedirectResponse(url="/login", status_code=302)
+
     analyses = db.query(Analysis).order_by(Analysis.id.desc()).limit(50).all()
-    # Precompute verdict for quick UI badges
+
     items = []
     for a in analyses:
         try:
@@ -187,6 +193,7 @@ def dashboard(request: Request, user: User = Depends(get_current_user), db: Sess
             v = None
         by = a.created_by_user.username if getattr(a, "created_by_user", None) else None
         items.append({"a": a, "verdict": v, "by": by})
+
     return templates.TemplateResponse("dashboard.html", {"request": request, "user": user, "items": items})
 
 @app.get("/analyses/new", response_class=HTMLResponse)
